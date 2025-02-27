@@ -4,13 +4,21 @@ pipeline {
     environment {
         // Path ke Python virtual environment
         VENV_PATH = "${WORKSPACE}/venv"
-        PATH_TO_PYTHON = isUnix() ? "${VENV_PATH}/bin:${PATH}" : "${VENV_PATH}\\Scripts;${PATH}"
     }
     
     stages {
         stage('Setup Environment') {
             steps {
                 echo 'Menyiapkan lingkungan pengembangan...'
+
+                // Menetapkan path yang benar berdasarkan platform
+                script {
+                    if (isUnix()) {
+                        env.PATH_TO_PYTHON = "${VENV_PATH}/bin:${PATH}"
+                    } else {
+                        env.PATH_TO_PYTHON = "${VENV_PATH}\\Scripts;${PATH}"
+                    }
+                }
                 
                 // Membuat direktori untuk hasil
                 script {
