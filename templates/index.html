@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Model Bank Marketing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .dashboard-container {
+            padding: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        .metrics-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .metric-card {
+            flex: 1;
+            min-width: 200px;
+            margin: 10px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .metric-title {
+            font-size: 14px;
+            color: #666;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .prediction-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .prediction-result {
+            margin-top: 20px;
+            display: none;
+        }
+        .spinner-border {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Dashboard Monitoring Model Bank Marketing</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#overview">Ringkasan</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#model-info">Informasi Model</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#monitoring">Monitoring</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#prediction">Prediksi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#data-drift">Data Drift</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container dashboard-container">
+        <section id="overview" class="mb-5">
+            <h2>Ringkasan</h2>
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            Metrik Model
+                        </div>
+                        <div class="card-body">
+                            <div id="model-metrics"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            Metrik Monitoring
+                        </div>
+                        <div class="card-body">
+                            <div class="metrics-container">
+                                <div class="metric-card bg-light">
+                                    <div class="metric-title">Total Prediksi</div>
+                                    <div class="metric-value" id="total-predictions">-</div>
+                                </div>
+                                <div class="metric-card bg-light">
+                                    <div class="metric-title">Tingkat Positif</div>
+                                    <div class="metric-value" id="positive-rate">-</div>
+                                </div>
+                                <div class="metric-card bg-light">
+                                    <div class="metric-title">Rata-rata Probabilitas</div>
+                                    <div class="metric-value" id="avg-probability">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="model-info" class="mb-5">
+            <h2>Informasi Model</h2>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            Ringkasan Evaluasi Model
+                        </div>
+                        <div class="card-body">
+                            <pre>{{ evaluation_summary }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="monitoring" class="mb-5">
+            <h2>Monitoring Model</h2>
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            Distribusi Prediksi
+                        </div>
+                        <div class="card-body">
+                            <div id="prediction-distribution">
+                                <p class="text-center">Memuat grafik distribusi...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            Riwayat Prediksi
+                        </div>
+                        <div class="card-body">
+                            <canvas id="prediction-history-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            Prediksi Terbaru
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Waktu</th>
+                                            <th>Prediksi</th>
+                                            <th>Probabilitas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recent-predictions">
+                                        <tr>
+                                            <td colspan="3" class="text-center">Belum ada data prediksi</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="prediction" class="mb-5">
+            <h2>Buat Prediksi</h2>
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="prediction-form">
+                        <form id="prediction-form">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label for="age" class="form-label">Usia</label>
+                                    <input type="number" class="form-control" id="age" name="age" required min="18" max="100" value="35">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="job" class="form-label">Pekerjaan</label>
+                                    <select class="form-select" id="job" name="job" required>
+                                        <option value="admin.">Administrator</option>
+                                        <option value="blue-collar">Pekerja Kerah Biru</option>
+                                        <option value="entrepreneur">Pengusaha</option>
+                                        <option value="housemaid">Pembantu Rumah Tangga</option>
+                                        <option value="management" selected>Manajemen</option>
+                                        <option value="retired">Pensiunan</option>
+                                        <option value="self-employed">Wiraswasta</option>
+                                        <option value="services">Jasa</option>
+                                        <option value="student">Pelajar</option>
+                                        <option value="technician">Teknisi</option>
+                                        <option value="unemployed">Pengangguran</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="marital" class="form-label">Status Pernikahan</label>
+                                    <select class="form-select" id="marital" name="marital" required>
+                                        <option value="divorced">Bercerai</option>
+                                        <option value="married" selected>Menikah</option>
+                                        <option value="single">Lajang</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="education" class="form-label">Pendidikan</label>
+                                    <select class="form-select" id="education" name="education" required>
+                                        <option value="basic.4y">Dasar 4 Tahun</option>
+                                        <option value="basic.6y">Dasar 6 Tahun</option>
+                                        <option value="basic.9y">Dasar 9 Tahun</option>
+                                        <option value="high.school">SMA</option>
+                                        <option value="illiterate">Buta Huruf</option>
+                                        <option value="professional.course">Kursus Profesional</option>
+                                        <option value="university.degree" selected>Gelar Universitas</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label for="default" class="form-label">Gagal Bayar?</label>
+                                    <select class="form-select" id="default" name="default" required>
+                                        <option value="no" selected>Tidak</option>
+                                        <option value="yes">Ya</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="balance" class="form-label">Saldo</label>
+                                    <input type="number" class="form-control" id="balance" name="balance" required value="1500">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="housing" class="form-label">Pinjaman Rumah?</label>
+                                    <select class="form-select" id="housing" name="housing" required>
+                                        <option value="no">Tidak</option>
+                                        <option value="yes" selected>Ya</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="loan" class="form-label">Pinjaman Pribadi?</label>
+                                    <select class="form-select" id="loan" name="loan" required>
+                                        <option value="no" selected>Tidak</option>
+                                        <option value="yes">Ya</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label for="contact" class="form-label">Kontak</label>
+                                    <select class="form-select" id="contact" name="contact" required>
+                                        <option value="cellular" selected>Seluler</option>
+                                        <option value="telephone">Telepon</option>
+                                        <option value="unknown">Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="day" class="form-label">Hari Kontak</label>
+                                    <input type="number" class="form-control" id="day" name="day" required min="1" max="31" value="15">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="month" class="form-label">Bulan Kontak</label>
+                                    <select class="form-select" id="month" name="month" required>
+                                        <option value="jan">Januari</option>
+                                        <option value="feb">Februari</option>
+                                        <option value="mar">Maret</option>
+                                        <option value="apr">April</option>
+                                        <option value="may" selected>Mei</option>
+                                        <option value="jun">Juni</option>
+                                        <option value="jul">Juli</option>
+                                        <option value="aug">Agustus</option>
+                                        <option value="sep">September</option>
+                                        <option value="oct">Oktober</option>
+                                        <option value="nov">November</option>
+                                        <option value="dec">Desember</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="duration" class="form-label">Durasi (detik)</label>
+                                    <input type="number" class="form-control" id="duration" name="duration" required value="180">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label for="campaign" class="form-label">Kampanye</label>
+                                    <input type="number" class="form-control" id="campaign" name="campaign" required min="1" max="50" value="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="pdays" class="form-label">Pdays</label>
+                                    <input type="number" class="form-control" id="pdays" name="pdays" required value="-1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="previous" class="form-label">Previous</label>
+                                    <input type="number" class="form-control" id="previous" name="previous" required min="0" value="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="poutcome" class="form-label">Poutcome</label>
+                                    <select class="form-select" id="poutcome" name="poutcome" required>
+                                        <option value="failure">Gagal</option>
+                                        <option value="other">Lainnya</option>
+                                        <option value="success">Sukses</option>
+                                        <option value="unknown" selected>Tidak Diketahui</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" id="prediction-spinner"></span>
+                                    Buat Prediksi
+                                </button>
+                            </div>
+                        </form>
+                        <div class="prediction-result" id="prediction-result">
+                            <div class="alert alert-info" role="alert">
+                                <h4 class="alert-heading">Hasil Prediksi</h4>
+                                <p id="prediction-text">-</p>
+                                <hr>
+                                <p class="mb-0">Probabilitas: <span id="prediction-probability">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="data-drift" class="mb-5">
+            <h2>Analisis Data Drift</h2>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            Ringkasan Data Drift
+                        </div>
+                        <div class="card-body">
+                            <div id="drift-summary">
+                                <p class="text-center">Klik tombol di bawah untuk menganalisis data drift</p>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-3">
+                                <button type="button" class="btn btn-primary" id="check-drift-btn">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" id="drift-spinner" style="display:none;"></span>
+                                    Periksa Data Drift
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="retraining" class="mb-5">
+            <h2>Retraining Model</h2>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            Retrain Model
+                        </div>
+                        <div class="card-body">
+                            <p>Jalankan retraining untuk memperbarui model dengan data terbaru.</p>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                                <button type="button" class="btn btn-danger" id="retrain-btn">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" id="retrain-spinner" style="display:none;"></span>
+                                    Retrain Model
+                                </button>
+                            </div>
+                            <div id="retrain-result" class="mt-3" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>Dashboard Monitoring Model Bank Marketing © 2023</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Panggilan awal untuk memuat data monitoring
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchMonitoringData();
+            fetchModelMetrics();
+            fetchPredictionDistribution();
+            setupEventListeners();
+        });
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Form Prediksi
+            document.getElementById('prediction-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                makePrediction();
+            });
+
+            // Tombol Periksa Data Drift
+            document.getElementById('check-drift-btn').addEventListener('click', function() {
+                checkDataDrift();
+            });
+
+            // Tombol Retrain Model
+            document.getElementById('retrain-btn').addEventListener('click', function() {
+                retrainModel();
+            });
+        }
+
+        // Fetch Monitoring Data
+        function fetchMonitoringData() {
+            fetch('/monitoring-data')
+                .then(response => response.json())
+                .then(data => {
+                    updateMonitoringMetrics(data);
+                    updateRecentPredictions(data.predictions);
+                    createPredictionHistoryChart(data.predictions);
+                })
+                .catch(error => {
+                    console.error('Error fetching monitoring data:', error);
+                });
+        }
+
+        // Fetch Model Metrics
+        function fetchModelMetrics() {
+            fetch('/model-info')
+                .then(response => response.json())
+                .then(data => {
+                    displayModelMetrics(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching model metrics:', error);
+                });
+        }
+
+        // Update Monitoring Metrics
+        function updateMonitoringMetrics(data) {
+            document.getElementById('total-predictions').textContent = data.total_predictions || 0;
+            document.getElementById('positive-rate').textContent = data.total_predictions ? 
+                (data.positive_rate * 100).toFixed(2) + '%' : '0.00%';
+            document.getElementById('avg-probability').textContent = data.total_predictions ? 
+                (data.average_probability * 100).toFixed(2) + '%' : '0.00%';
+        }
+
+        // Update Recent Predictions Table
+        function updateRecentPredictions(predictions) {
+            const tbody = document.getElementById('recent-predictions');
+            
+            if (!predictions || predictions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center">Belum ada data prediksi</td></tr>';
+                return;
+            }
+            
+            // Clear table
+            tbody.innerHTML = '';
+            
+            // Add most recent 10 predictions (in reverse order)
+            const recentPredictions = predictions.slice(-10).reverse();
+            
+            recentPredictions.forEach(pred => {
+                const row = document.createElement('tr');
+                
+                const timestampCell = document.createElement('td');
+                timestampCell.textContent = pred.timestamp;
+                
+                const predictionCell = document.createElement('td');
+                predictionCell.textContent = pred.prediction === 1 ? 'Berlangganan' : 'Tidak Berlangganan';
+                
+                const probabilityCell = document.createElement('td');
+                probabilityCell.textContent = (pred.probability * 100).toFixed(2) + '%';
+                
+                row.appendChild(timestampCell);
+                row.appendChild(predictionCell);
+                row.appendChild(probabilityCell);
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Create Prediction History Chart
+        function createPredictionHistoryChart(predictions) {
+            if (!predictions || predictions.length === 0) return;
+
+            // Only take the last 30 predictions for the chart
+            const chartData = predictions.slice(-30);
+            
+            const labels = chartData.map(p => {
+                const date = new Date(p.timestamp);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+            
+            const probabilities = chartData.map(p => p.probability);
+            
+            // If chart already exists, destroy it
+            if (window.predictionChart) {
+                window.predictionChart.destroy();
+            }
+            
+            const ctx = document.getElementById('prediction-history-chart').getContext('2d');
+            window.predictionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Probabilitas Prediksi',
+                        data: probabilities,
+                        borderColor: 'rgba(0, 123, 255, 1)',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Display Model Metrics
+        function displayModelMetrics(data) {
+            const metricsContainer = document.getElementById('model-metrics');
+            
+            if (!data || !data.metrics || !data.metrics.models) {
+                metricsContainer.innerHTML = '<p class="text-center">Informasi metrik model tidak tersedia</p>';
+                return;
+            }
+            
+            const bestModel = data.metrics.best_model;
+            const modelData = data.metrics.models[bestModel];
+            
+            let html = `<div class="text-center mb-3">
+                            <strong>Model Terbaik:</strong> ${formatModelName(bestModel)}
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="fs-5">Train ROC-AUC</div>
+                                    <div class="fs-3 fw-bold">${(modelData.train_roc_auc * 100).toFixed(2)}%</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="fs-5">Test ROC-AUC</div>
+                                    <div class="fs-3 fw-bold">${(modelData.test_roc_auc * 100).toFixed(2)}%</div>
+                                </div>
+                            </div>
+                        </div>`;
+            
+            metricsContainer.innerHTML = html;
+        }
+
+        // Format Model Name
+        function formatModelName(modelName) {
+            switch(modelName) {
+                case 'logistic_regression':
+                    return 'Regresi Logistik';
+                case 'random_forest':
+                    return 'Random Forest';
+                case 'gradient_boosting':
+                    return 'Gradient Boosting';
+                default:
+                    return modelName.replace(/_/g, ' ');
+            }
+        }
+
+        // Fetch Prediction Distribution
+        function fetchPredictionDistribution() {
+            fetch('/prediction-distribution')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('No prediction data available');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.distribution_graph) {
+                        const container = document.getElementById('prediction-distribution');
+                        container.innerHTML = `<img src="${data.distribution_graph}" class="img-fluid" alt="Prediction Distribution">`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching prediction distribution:', error);
+                    const container = document.getElementById('prediction-distribution');
+                    container.innerHTML = '<p class="text-center">Tidak ada data prediksi yang cukup untuk membuat grafik</p>';
+                });
+        }
+
+        // Make Prediction
+        function makePrediction() {
+            // Show spinner
+            const spinner = document.getElementById('prediction-spinner');
+            spinner.style.display = 'inline-block';
+            
+            // Collect form data
+            const formData = {};
+            const form = document.getElementById('prediction-form');
+            
+            for (let element of form.elements) {
+                if (element.name && element.name !== '') {
+                    formData[element.name] = element.value;
+                }
+            }
+            
+            // Convert numeric fields
+            const numericFields = ['age', 'balance', 'day', 'duration', 'campaign', 'pdays', 'previous'];
+            numericFields.forEach(field => {
+                formData[field] = parseInt(formData[field]);
+            });
+            
+            // Make API call
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                // Display result
+                const resultDiv = document.getElementById('prediction-result');
+                const resultText = document.getElementById('prediction-text');
+                const resultProb = document.getElementById('prediction-probability');
+                
+                resultDiv.style.display = 'block';
+                resultText.textContent = `Prediksi: ${data.result_text}`;
+                resultProb.textContent = `${(data.probability * 100).toFixed(2)}%`;
+                
+                // Update alertbox color based on prediction
+                const alertBox = resultDiv.querySelector('.alert');
+                if (data.prediction === 1) {
+                    alertBox.className = 'alert alert-success';
+                } else {
+                    alertBox.className = 'alert alert-warning';
+                }
+                
+                // Refresh monitoring data
+                setTimeout(fetchMonitoringData, 1000);
+                setTimeout(fetchPredictionDistribution, 1000);
+            })
+            .catch(error => {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                console.error('Error making prediction:', error);
+                alert('Terjadi kesalahan saat membuat prediksi. Silakan coba lagi.');
+            });
+        }
+
+        // Check Data Drift
+        function checkDataDrift() {
+            // Show spinner
+            const spinner = document.getElementById('drift-spinner');
+            spinner.style.display = 'inline-block';
+            
+            fetch('/data-drift')
+                .then(response => response.json())
+                .then(data => {
+                    // Hide spinner
+                    spinner.style.display = 'none';
+                    
+                    if (data.error) {
+                        document.getElementById('drift-summary').innerHTML = 
+                            `<div class="alert alert-warning">${data.error}</div>`;
+                        return;
+                    }
+                    
+                    displayDriftData(data);
+                })
+                .catch(error => {
+                    // Hide spinner
+                    spinner.style.display = 'none';
+                    
+                    console.error('Error checking data drift:', error);
+                    document.getElementById('drift-summary').innerHTML = 
+                        `<div class="alert alert-danger">Error saat memeriksa data drift: ${error.message}</div>`;
+                });
+        }
+
+        // Display Drift Data
+        function displayDriftData(data) {
+            const driftDiv = document.getElementById('drift-summary');
+            
+            if (!data.drift_metrics || Object.keys(data.drift_metrics).length === 0) {
+                driftDiv.innerHTML = '<div class="alert alert-info">Tidak ada data yang cukup untuk analisis drift</div>';
+                return;
+            }
+            
+            let html = `<div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Fitur</th>
+                                        <th>Mean Data Asli</th>
+                                        <th>Mean Data Baru</th>
+                                        <th>Drift (%)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+            
+            for (const [feature, metrics] of Object.entries(data.drift_metrics)) {
+                html += `<tr>
+                            <td>${feature}</td>
+                            <td>${metrics.original_mean.toFixed(2)}</td>
+                            <td>${metrics.new_mean.toFixed(2)}</td>
+                            <td>${metrics.drift_percentage.toFixed(2)}%</td>
+                            <td>
+                                <span class="badge ${metrics.significant_drift ? 'bg-danger' : 'bg-success'}">
+                                    ${metrics.significant_drift ? 'Drift Signifikan' : 'Normal'}
+                                </span>
+                            </td>
+                        </tr>`;
+            }
+            
+            html += `</tbody></table></div>
+                    <div class="mt-3">
+                        <p class="text-muted">Updated: ${data.timestamp}</p>
+                    </div>`;
+            
+            driftDiv.innerHTML = html;
+        }
+
+        // Retrain Model
+        function retrainModel() {
+            if (!confirm('Apakah Anda yakin ingin melatih ulang model? Proses ini mungkin memakan waktu beberapa menit.')) {
+                return;
+            }
+            
+            // Show spinner
+            const spinner = document.getElementById('retrain-spinner');
+            spinner.style.display = 'inline-block';
+            
+            // Disable button
+            const button = document.getElementById('retrain-btn');
+            button.disabled = true;
+            
+            // Result container
+            const resultDiv = document.getElementById('retrain-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="alert alert-info">Proses retraining sedang berjalan, harap tunggu...</div>';
+            
+            fetch('/retrain', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                // Enable button
+                button.disabled = false;
+                
+                if (data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h5>Retraining Berhasil!</h5>
+                            <p>Model terbaik: ${formatModelName(data.result.best_model)}</p>
+                            <p>ROC-AUC Test: ${(data.result.test_roc_auc * 100).toFixed(2)}%</p>
+                        </div>`;
+                    
+                    // Refresh metrics after a short delay
+                    setTimeout(() => {
+                        fetchModelMetrics();
+                        fetchMonitoringData();
+                    }, 2000);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5>Retraining Gagal</h5>
+                            <p>${data.message}</p>
+                        </div>`;
+                }
+            })
+            .catch(error => {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                // Enable button
+                button.disabled = false;
+                
+                console.error('Error retraining model:', error);
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Error</h5>
+                        <p>Terjadi kesalahan saat melatih ulang model: ${error.message}</p>
+                    </div>`;
+            });
+        }
+
+        // Auto-refresh data every 30 seconds
+        setInterval(fetchMonitoringData, 30000);
+    </script>
+</body>
+</html> 
