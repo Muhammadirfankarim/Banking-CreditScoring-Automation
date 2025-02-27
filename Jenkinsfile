@@ -4,7 +4,7 @@ pipeline {
     environment {
         // Path ke Python virtual environment
         VENV_PATH = "${WORKSPACE}/venv"
-        PATH_TO_PYTHON = "${VENV_PATH}/bin:${PATH}"
+        PATH_TO_PYTHON = isUnix() ? "${VENV_PATH}/bin:${PATH}" : "${VENV_PATH}\\Scripts;${PATH}"
     }
     
     stages {
@@ -13,7 +13,13 @@ pipeline {
                 echo 'Menyiapkan lingkungan pengembangan...'
                 
                 // Membuat direktori untuk hasil
-                sh 'mkdir -p models reports visualizations data predictions'
+                script {
+                    if (isUnix()) {
+                        sh 'mkdir -p models reports visualizations data predictions'
+                    } else {
+                        bat 'mkdir models reports visualizations data predictions 2>nul'
+                    }
+                }
                 
                 // Membuat virtual environment dan menginstal dependensi
                 script {
@@ -27,7 +33,7 @@ pipeline {
                     } else {
                         bat '''
                             python -m venv venv
-                            venv\\Scripts\\activate.bat
+                            call venv\\Scripts\\activate.bat
                             pip install --upgrade pip
                             pip install pandas numpy matplotlib seaborn scikit-learn flask pytest pytest-cov
                         '''
@@ -488,7 +494,7 @@ except Exception as e:
                     '''
                 } else {
                     bat '''
-                        for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5000 ^| findstr LISTENING') do (
+                        for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5000 ^| findstr LISTENING 2^>nul') do (
                             taskkill /F /PID %%a 2>nul || echo Process tidak ditemukan
                         )
                     '''
@@ -496,4 +502,3 @@ except Exception as e:
             }
         }
     }
-} 
